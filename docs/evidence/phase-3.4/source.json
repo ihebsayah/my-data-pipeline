@@ -1,0 +1,25 @@
+{
+  "archive": "data/cache/202601-citibike-tripdata.zip",
+  "sha256": "8d579be9515f797739f0ff907576da44f25413bc677e1286a876696a71ae9755",
+  "members": [
+    {
+      "filename": "202601-citibike-tripdata_2.csv",
+      "rows": 816391,
+      "unique_ride_ids": 816391,
+      "duplicate_ride_ids": 0,
+      "null_ride_ids": 0
+    },
+    {
+      "filename": "202601-citibike-tripdata_1.csv",
+      "rows": 1000000,
+      "unique_ride_ids": 1000000,
+      "duplicate_ride_ids": 0,
+      "null_ride_ids": 0
+    }
+  ],
+  "ignored": [],
+  "rows": 1816391,
+  "unique_ride_ids": 1816391,
+  "duplicate_ride_ids": 0,
+  "null_ride_ids": 0
+}

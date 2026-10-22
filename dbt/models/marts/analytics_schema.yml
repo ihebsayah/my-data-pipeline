@@ -1,0 +1,272 @@
+version: 2
+
+models:
+  - name: fct_hourly_coverage
+    description: >
+      One row per hour of the full coverage window (744 rows for January 2026),
+      including hours that are absent from fct_hourly_demand. This is the
+      availability companion to fct_hourly_demand: observed_trips counts trips
+      actually present in the source for that hour (evidence of data), while
+      coverage_status states whether the hour's data can be trusted as a
+      complete observation of demand. 'complete' = verified full coverage (row
+      exists in fct_hourly_demand); 'boundary' = final local day of the
+      end-keyed archive window, present in the demand mart but right-truncated;
+      'partial' = some observed trips exist but the hour is not a complete
+      observation (gap onset hour with 4 observed trips, excluded from the
+      demand mart; or the gap resume hour whose first trip starts after the
+      hour began); 'unavailable' = no data present, source outage (excluded
+      from the demand mart, never zero-filled). demand_rides_total is NULL
+      whenever the hour is not in the demand mart, so missing coverage is never
+      represented as zero demand.
+    columns:
+      - name: hour_utc
+        description: Hour key; start of hour in UTC. One row per value over the full window.
+        tests:
+          - not_null
+          - unique
+      - name: hour_local_start
+        description: Start of the hour in local America/New_York wall time.
+        tests:
+          - not_null
+      - name: hour_local_date
+        description: Local calendar date of the hour start.
+        tests:
+          - not_null
+      - name: hour_local
+        description: Local hour of day (0-23).
+        tests:
+          - not_null
+      - name: day_of_week_local
+        description: Local ISO day of week (1 = Monday, 7 = Sunday).
+        tests:
+          - not_null
+      - name: is_weekend_local
+        description: True when the local day is Saturday or Sunday.
+        tests:
+          - not_null
+      - name: coverage_status
+        description: Availability classification of the hour (complete / boundary / partial / unavailable).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['complete', 'boundary', 'partial', 'unavailable']
+      - name: in_demand_mart
+        description: True when a matching row exists in fct_hourly_demand (complete + boundary hours only).
+        tests:
+          - not_null
+      - name: observed_trips
+        description: Trip starts physically present in the source for this hour, regardless of coverage status.
+        tests:
+          - not_null
+          - nonnegative
+      - name: demand_rides_total
+        description: >
+          rides_total from fct_hourly_demand. NULL for hours not in the demand
+          mart (partial onset / unavailable) so absent coverage is never
+          rendered as zero demand.
+      - name: is_source_truncated
+        description: True for final-day hours whose demand counts are right-truncated by the end-keyed archive.
+        tests:
+          - not_null
+      - name: coverage_reason
+        description: Human-readable driver of non-complete status (end_keyed_archive / source_outage / gap_onset / gap_resume); NULL for complete hours.
+      - name: first_trip_started_at
+        description: UTC start of the first observed trip in the hour; NULL when the hour has no observed trips.
+
+  - name: mart_daily_demand
+    description: >
+      One row per local calendar date in the coverage window, aggregated from
+      fct_hourly_demand and annotated with fct_hourly_coverage. covered_hours /
+      complete_hours / partial_hours / unavailable_hours / boundary_hours make
+      the day's data availability explicit; is_fully_covered_day is true only
+      when all 24 hours are 'complete'. observed_trips counts what the source
+      physically contains for the day (including the 4 gap-onset trips excluded
+      from demand), rides_* aggregate only hours present in the demand mart,
+      and trips_excluded_from_demand is their difference (nonzero only on
+      2026-01-25 for this dataset).
+    columns:
+      - name: hour_local_date
+        description: Local calendar date; one row per date in the coverage window.
+        tests:
+          - not_null
+          - unique
+      - name: day_of_week_local
+        description: Local ISO day of week (1 = Monday, 7 = Sunday).
+        tests:
+          - not_null
+      - name: is_weekend_local
+        description: True when the local day is Saturday or Sunday.
+        tests:
+          - not_null
+      - name: covered_hours
+        description: Hours of this date present in fct_hourly_demand.
+        tests:
+          - not_null
+          - nonnegative
+      - name: complete_hours
+        description: Hours of this date with verified complete coverage.
+        tests:
+          - not_null
+          - nonnegative
+      - name: partial_hours
+        description: Hours of this date classified 'partial' (present in source but not a complete observation).
+        tests:
+          - not_null
+          - nonnegative
+      - name: unavailable_hours
+        description: Hours of this date with no source data (outage).
+        tests:
+          - not_null
+          - nonnegative
+      - name: boundary_hours
+        description: Hours of this date right-truncated by the end-keyed archive window.
+        tests:
+          - not_null
+          - nonnegative
+      - name: is_fully_covered_day
+        description: True only when all 24 hours of the date have status 'complete'.
+        tests:
+          - not_null
+      - name: is_source_truncated_day
+        description: True when any hour of the date is right-truncated (final local day of the window).
+        tests:
+          - not_null
+      - name: observed_trips
+        description: Trip starts physically present in the source for the date, across all coverage statuses.
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_total
+        description: Trip starts aggregated from fct_hourly_demand for the date (0 when the day has no covered hours; this day-level 0 is only meaningful when unavailable_hours = 0).
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_member
+        description: Member trip starts from the demand mart for the date.
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_casual
+        description: Casual trip starts from the demand mart for the date.
+        tests:
+          - not_null
+          - nonnegative
+      - name: trips_excluded_from_demand
+        description: observed_trips minus rides_total; trips present in the source but deliberately outside the demand mart.
+        tests:
+          - nonnegative
+
+  - name: mart_demand_pattern_hourly
+    description: >
+      Demand curve: one row per (local hour of day, weekday/weekend) over the
+      demand mart. covered_hours shows how many mart hours back each bucket
+      (partial/outage days contribute fewer hours, so averages remain
+      coverage-honest); avg_rides_total is the mean over those covered hours.
+      48 rows = 24 hours x 2 day types.
+    columns:
+      - name: hour_local
+        description: Local hour of day (0-23).
+        tests:
+          - not_null
+      - name: is_weekend_local
+        description: Day-type bucket (true = Saturday/Sunday).
+        tests:
+          - not_null
+      - name: covered_hours
+        description: Number of demand-mart hours contributing to this bucket.
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_total
+        description: Sum of trip starts across contributing hours.
+        tests:
+          - not_null
+          - nonnegative
+      - name: avg_rides_total
+        description: Mean trip starts per contributing hour.
+        tests:
+          - nonnegative
+      - name: rides_member
+        description: Sum of member trip starts across contributing hours.
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_casual
+        description: Sum of casual trip starts across contributing hours.
+        tests:
+          - not_null
+          - nonnegative
+      - name: member_share
+        description: rides_member / rides_total for the bucket.
+
+  - name: mart_rider_mix
+    description: >
+      Member vs casual split of trip starts, weekday vs weekend, aggregated
+      from the demand mart. 2 rows.
+    columns:
+      - name: is_weekend_local
+        description: Day-type bucket (true = Saturday/Sunday).
+        tests:
+          - not_null
+      - name: covered_hours
+        description: Number of demand-mart hours contributing to this bucket.
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_total
+        description: Trip starts in the bucket.
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_member
+        description: Member trip starts in the bucket.
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_casual
+        description: Casual trip starts in the bucket.
+        tests:
+          - not_null
+          - nonnegative
+      - name: member_share
+        description: rides_member / rides_total.
+      - name: casual_share
+        description: rides_casual / rides_total.
+
+  - name: mart_station_starts
+    description: >
+      Station-level trip-start counts for eligible trips (valid timestamps,
+      inside the coverage window, outside the source outage) — the same
+      eligibility as fct_hourly_demand, so rides_total sums to the mart total.
+      Materialized as a table because tests and downstream queries would
+      otherwise re-parse the full 1.8M-row staging view on every access.
+      Rows whose start station is blank in the source keep NULL station id and
+      name (one NULL group); they are retained, never dropped, so station
+      totals reconcile. Station id -> name is 1:1 in this dataset (verified).
+    columns:
+      - name: start_station_id
+        description: Start station id as text; NULL for source rows with blank station (grouped together, retained).
+      - name: start_station_name
+        description: Start station name; NULL alongside start_station_id for blank-source rows.
+      - name: rides_total
+        description: Trip starts from this station group (NULL-id group = blank-source trips).
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_member
+        description: Member trip starts from this station group.
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_casual
+        description: Casual trip starts from this station group.
+        tests:
+          - not_null
+          - nonnegative
+      - name: share_of_all_rides
+        description: Group rides_total divided by total eligible trip starts.
+      - name: first_trip_started_at
+        description: Earliest trip start (UTC) observed for this group.
+      - name: last_trip_started_at
+        description: Latest trip start (UTC) observed for this group.

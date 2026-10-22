@@ -1,0 +1,43 @@
+;
+; Archive created at 2026-10-20 12:06:13 UTC
+;     dbname: citi_bike
+;     TOC Entries: 32
+;     Compression: gzip
+;     Dump Version: 1.15-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 16.15 (Debian 16.15-1.pgdg13+2)
+;     Dumped by pg_dump version: 16.15 (Debian 16.15-1.pgdg13+2)
+;
+;
+; Selected TOC Entries:
+;
+7; 2615 16390 SCHEMA - ingest citi_bike
+6; 2615 16389 SCHEMA - raw citi_bike
+218; 1259 16392 TABLE ingest manifest citi_bike
+217; 1259 16391 SEQUENCE ingest manifest_id_seq citi_bike
+3452; 0 0 SEQUENCE OWNED BY ingest manifest_id_seq citi_bike
+220; 1259 16403 TABLE raw trips citi_bike
+219; 1259 16402 SEQUENCE raw trips_id_seq citi_bike
+3453; 0 0 SEQUENCE OWNED BY raw trips_id_seq citi_bike
+222; 1259 16415 TABLE raw trips_rejects citi_bike
+221; 1259 16414 SEQUENCE raw trips_rejects_id_seq citi_bike
+3454; 0 0 SEQUENCE OWNED BY raw trips_rejects_id_seq citi_bike
+3279; 2604 16395 DEFAULT ingest manifest id citi_bike
+3280; 2604 16406 DEFAULT raw trips id citi_bike
+3282; 2604 16418 DEFAULT raw trips_rejects id citi_bike
+3441; 0 16392 TABLE DATA ingest manifest citi_bike
+3443; 0 16403 TABLE DATA raw trips citi_bike
+3445; 0 16415 TABLE DATA raw trips_rejects citi_bike
+3455; 0 0 SEQUENCE SET ingest manifest_id_seq citi_bike
+3456; 0 0 SEQUENCE SET raw trips_id_seq citi_bike
+3457; 0 0 SEQUENCE SET raw trips_rejects_id_seq citi_bike
+3285; 2606 16401 CONSTRAINT ingest manifest manifest_file_key_month_key citi_bike
+3287; 2606 16399 CONSTRAINT ingest manifest manifest_pkey citi_bike
+3291; 2606 16413 CONSTRAINT raw trips raw_trips_ride_id_unique citi_bike
+3293; 2606 16411 CONSTRAINT raw trips trips_pkey citi_bike
+3296; 2606 16423 CONSTRAINT raw trips_rejects trips_rejects_pkey citi_bike
+3294; 1259 16426 INDEX raw idx_raw_trips_rejects_reason citi_bike
+3288; 1259 16425 INDEX raw idx_raw_trips_ride_id citi_bike
+3289; 1259 16424 INDEX raw idx_raw_trips_started_at_utc citi_bike

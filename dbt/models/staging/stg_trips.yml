@@ -1,0 +1,73 @@
+version: 2
+
+models:
+  - name: stg_trips
+    description: >
+      One row per canonical raw trip (raw.trips), keyed by ride_id. Source
+      timestamp text is parsed explicitly and interpreted as naive
+      America/New_York wall time. Every timestamp is classified as
+      'valid', 'ambiguous' (fall-back repeated hour), 'nonexistent'
+      (spring-forward gap) or 'invalid' (unparseable). UTC instants are
+      derived only for 'valid' timestamps; ambiguous and nonexistent local
+      times are never assigned an invented UTC instant. Station IDs stay
+      text; blank station values become NULL without dropping the trip.
+      trip_duration_sec is the real elapsed time in seconds, computed only
+      when both timestamps resolve to UTC. Materialized as a view to avoid
+      duplicating the trip-level table.
+    columns:
+      - name: ride_id
+        description: Canonical trip identifier (text, source primary key).
+        tests:
+          - not_null
+          - unique
+      - name: started_at_raw
+        description: Source start timestamp text, preserved verbatim.
+        tests:
+          - not_null
+      - name: ended_at_raw
+        description: Source end timestamp text, preserved verbatim.
+        tests:
+          - not_null
+      - name: started_at_local
+        description: Start parsed to a naive local (America/New_York) timestamp; NULL if unparseable.
+      - name: started_at_utc
+        description: >
+          Start as an absolute UTC instant, set only when
+          started_at_status = 'valid'. NULL for ambiguous/nonexistent/invalid
+          local times (conservative DST policy).
+      - name: started_at_status
+        description: DST/parse classification of the start timestamp.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['valid', 'ambiguous', 'nonexistent', 'invalid']
+      - name: ended_at_local
+        description: End parsed to a naive local (America/New_York) timestamp; NULL if unparseable.
+      - name: ended_at_utc
+        description: End as an absolute UTC instant, set only when ended_at_status = 'valid'.
+      - name: ended_at_status
+        description: DST/parse classification of the end timestamp.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['valid', 'ambiguous', 'nonexistent', 'invalid']
+      - name: trip_duration_sec
+        description: >
+          Real elapsed trip duration in seconds, computed only when both
+          timestamps resolve to UTC. NULL otherwise.
+        tests:
+          - nonnegative
+      - name: start_station_id
+        description: Start station ID as text; blank values normalized to NULL (trips are kept).
+      - name: end_station_id
+        description: End station ID as text; blank values normalized to NULL (trips are kept).
+      - name: member_casual
+        description: Rider type as published ('member' or 'casual'); preserved without filtering.
+      - name: source_member
+        description: CSV member the row was loaded from.
+      - name: source_file_key
+        description: Source archive file key the row was loaded from.
+      - name: _ingested_at
+        description: Ingestion timestamp set by the raw loader.

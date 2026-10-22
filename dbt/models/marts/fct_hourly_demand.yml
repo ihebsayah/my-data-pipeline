@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: fct_hourly_demand
+    description: >
+      Hourly system-wide Citi Bike trip-start demand. Grain: exactly one row
+      per UTC hour (hour_utc) over the verified source-coverage window
+      (January 2026 local, minus the documented 2026-01-25 source outage
+      window). Hours inside the outage window are deliberately absent rather
+      than zero-filled, because coverage there is not verified. Calendar
+      attributes (local date, hour, weekday, weekend) are derived from the
+      America/New_York rendering of hour_utc; because New York DST offsets
+      are whole hours, this is a strict 1:1 mapping with UTC hours, including
+      across DST transitions. Trip starts whose timestamps are ambiguous,
+      nonexistent or invalid are excluded from aggregation and accounted for
+      in the reconciliation tests. is_source_truncated marks the final local
+      day of the window: the published archive selects trips by end time, so
+      trips starting late on 2026-01-31 that end on 2026-02-01 are absent
+      from the source and those hours undercount.
+    columns:
+      - name: hour_utc
+        description: Canonical hour key; UTC instant at the start of the hour. One row per value.
+        tests:
+          - not_null
+          - unique
+      - name: hour_local_start
+        description: Start of the hour in local America/New_York wall time (naive timestamp).
+        tests:
+          - not_null
+      - name: hour_local_date
+        description: Local calendar date of the hour start.
+        tests:
+          - not_null
+      - name: hour_local
+        description: Local hour of day (0-23).
+        tests:
+          - not_null
+      - name: day_of_week_local
+        description: Local ISO day of week (1 = Monday, 7 = Sunday).
+        tests:
+          - not_null
+      - name: is_weekend_local
+        description: True when the local day is Saturday or Sunday.
+        tests:
+          - not_null
+      - name: rides_total
+        description: Trip starts in the hour (citywide).
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_member
+        description: Trip starts in the hour by member riders.
+        tests:
+          - not_null
+          - nonnegative
+      - name: rides_casual
+        description: Trip starts in the hour by casual riders.
+        tests:
+          - not_null
+          - nonnegative
+      - name: is_source_truncated
+        description: >
+          True for hours on the final local day of the coverage window, where
+          the end-keyed published archive provably omits trips that end after
+          the window (right truncation).
+        tests:
+          - not_null

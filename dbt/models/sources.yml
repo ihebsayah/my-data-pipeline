@@ -1,0 +1,23 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    description: >
+      Landing tables written by the Python ingestion pipeline (Phase 3).
+      Owned by the ingestion layer; dbt reads them and never writes to them.
+    tables:
+      - name: trips
+        description: >
+          Canonical trip records, one row per ride_id. Timestamp columns are
+          text in the source format "YYYY-MM-DD HH:MM:SS.mmm" (naive local
+          America/New_York wall time). The started_at_utc / ended_at_utc /
+          trip_duration_sec columns shipped by the loader are NULL for the
+          ingested January 2026 archive and must not be relied upon.
+        columns:
+          - name: ride_id
+            description: Canonical trip identifier; unique, non-null (Phase 3.4 verified).
+          - name: started_at_raw
+            description: Trip start as source text, naive local America/New_York time.
+          - name: ended_at_raw
+            description: Trip end as source text, naive local America/New_York time.

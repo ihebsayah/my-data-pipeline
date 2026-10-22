@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+.tox/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Data - never commit raw data or derived datasets
+data/
+src/data/
+*.zip
+*.csv
+*.parquet
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/catalog.yml
+dbt/.user.yml
+
+# Database dumps / backups
+*.dump
+*.sql.gz
+*.backup

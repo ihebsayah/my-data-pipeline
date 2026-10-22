@@ -1,0 +1,20 @@
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.5.0) or chardet (7.4.0.post2)/charset_normalizer (3.4.2) doesn't match a supported version!
+  warnings.warn(
+============================= test session starts ==============================
+platform darwin -- Python 3.13.3, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/ihebsayah/Documents/my portfolio/my data pipeline
+configfile: pyproject.toml
+testpaths: tests
+plugins: langsmith-0.7.35, asyncio-1.2.0, anyio-4.9.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 28 items
+
+tests/integration/test_reconciliation.py .............                   [ 46%]
+tests/unit/test_duplicate_cross.py ..                                    [ 53%]
+tests/unit/test_parser.py ....                                           [ 67%]
+tests/unit/test_s3_listing.py ...                                        [ 78%]
+tests/unit/test_source_audit.py .                                        [ 82%]
+tests/unit/test_timestamp.py ..                                          [ 89%]
+tests/unit/test_timestamp_dst.py ...                                     [100%]
+
+============================== 28 passed in 1.90s ==============================

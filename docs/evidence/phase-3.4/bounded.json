@@ -1,0 +1,38 @@
+{
+  "first": {
+    "month": "202601",
+    "archive_key": "bounded.zip",
+    "archive_size": 7929069,
+    "archive_path": "docs/evidence/phase-3.4/bounded.zip",
+    "checksum_sha256": "8c3e8e3aa5f7d2dbb9ff80deddee9193e2c744ecfc0c9f3b2903e7d0926efa9b",
+    "csv_members": [
+      "202601-citibike-tripdata_1.csv",
+      "202601-citibike-tripdata_2.csv"
+    ],
+    "rows_read": 40006,
+    "rows_accepted": 40006,
+    "rows_rejected": 0,
+    "duplicates_detected": 0,
+    "elapsed_seconds": 14.84
+  },
+  "rerun": {
+    "month": "202601",
+    "archive_key": "bounded.zip",
+    "archive_size": 7929069,
+    "archive_path": "docs/evidence/phase-3.4/bounded.zip",
+    "checksum_sha256": "8c3e8e3aa5f7d2dbb9ff80deddee9193e2c744ecfc0c9f3b2903e7d0926efa9b",
+    "csv_members": [
+      "202601-citibike-tripdata_1.csv",
+      "202601-citibike-tripdata_2.csv"
+    ],
+    "rows_read": 40006,
+    "rows_accepted": 0,
+    "rows_rejected": 0,
+    "duplicates_detected": 40006,
+    "elapsed_seconds": 14.52
+  },
+  "database_counts": [
+    40006,
+    40006
+  ]
+}

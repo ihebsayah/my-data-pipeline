@@ -1,0 +1,96 @@
+{
+  "canonical": {
+    "sql": "SELECT count(*) AS rows, count(DISTINCT ride_id) AS unique_ids,\n        count(*) FILTER (WHERE ride_id IS NULL OR btrim(ride_id)='') AS null_or_blank_ids,\n        min(started_at_raw) AS earliest_started_at_raw,\n        max(started_at_raw) AS latest_started_at_raw,\n        min(started_at_utc) AS earliest_started_at_utc,\n        max(started_at_utc) AS latest_started_at_utc FROM raw.trips",
+    "results": [
+      {
+        "rows": 330000,
+        "unique_ids": 330000,
+        "null_or_blank_ids": 0,
+        "earliest_started_at_raw": "2025-12-31 09:44:07.590",
+        "latest_started_at_raw": "2026-01-14 18:59:59.453",
+        "earliest_started_at_utc": null,
+        "latest_started_at_utc": null
+      }
+    ]
+  },
+  "rejects": {
+    "sql": "SELECT count(*) AS rows FROM raw.trips_rejects",
+    "results": [
+      {
+        "rows": 0
+      }
+    ]
+  },
+  "manifest": {
+    "sql": "SELECT * FROM ingest.manifest ORDER BY id",
+    "results": [
+      {
+        "id": 1,
+        "source": "s3://tripdata",
+        "file_key": "202601-citibike-tripdata.zip",
+        "local_path": "/Users/ihebsayah/Documents/my portfolio/my data pipeline/data/cache/202601-citibike-tripdata.zip",
+        "checksum_sha256": "8d579be9515f797739f0ff907576da44f25413bc677e1286a876696a71ae9755",
+        "bytes": 353829139,
+        "month": "202601",
+        "status": "completed",
+        "rows_read": 1816391,
+        "rows_accepted": 1816391,
+        "rows_rejected": 0,
+        "duplicates_detected": 0,
+        "started_at": "2026-10-20 11:55:56.080427+00:00",
+        "completed_at": "2026-10-20 11:58:11.611675+00:00",
+        "error_message": null
+      }
+    ]
+  },
+  "members": {
+    "sql": "SELECT source_file_key, source_member, count(*) AS rows,\n        min(started_at_raw) AS earliest_started_at_raw,\n        max(started_at_raw) AS latest_started_at_raw\n        FROM raw.trips GROUP BY 1,2 ORDER BY 1,2",
+    "results": [
+      {
+        "source_file_key": "202601-citibike-tripdata.zip",
+        "source_member": "202601-citibike-tripdata_1.csv",
+        "rows": 330000,
+        "earliest_started_at_raw": "2025-12-31 09:44:07.590",
+        "latest_started_at_raw": "2026-01-14 18:59:59.453"
+      }
+    ]
+  },
+  "reject_members": {
+    "sql": "SELECT source_file_key, source_member, reason, count(*) AS rows\n        FROM raw.trips_rejects GROUP BY 1,2,3 ORDER BY 1,2,3",
+    "results": []
+  },
+  "duplicates": {
+    "sql": "SELECT ride_id, count(*) FROM raw.trips\n        GROUP BY ride_id HAVING count(*) > 1",
+    "results": []
+  },
+  "constraints": {
+    "sql": "SELECT conrelid::regclass::text AS table_name, conname,\n        pg_get_constraintdef(oid) AS definition FROM pg_constraint\n        WHERE connamespace IN ('raw'::regnamespace, 'ingest'::regnamespace)",
+    "results": [
+      {
+        "table_name": "ingest.manifest",
+        "conname": "manifest_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "table_name": "ingest.manifest",
+        "conname": "manifest_file_key_month_key",
+        "definition": "UNIQUE (file_key, month)"
+      },
+      {
+        "table_name": "raw.trips",
+        "conname": "trips_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "table_name": "raw.trips",
+        "conname": "raw_trips_ride_id_unique",
+        "definition": "UNIQUE (ride_id)"
+      },
+      {
+        "table_name": "raw.trips_rejects",
+        "conname": "trips_rejects_pkey",
+        "definition": "PRIMARY KEY (id)"
+      }
+    ]
+  }
+}

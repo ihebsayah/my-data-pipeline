@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: citi_bike_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-citi_bike}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-citi_bike_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-citi_bike}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-citi_bike} -d ${POSTGRES_DB:-citi_bike}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

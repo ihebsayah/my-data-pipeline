@@ -1,0 +1,22 @@
+# Project structure
+src/
+tests/
+docs/
+migrations/
+
+# Data (local only)
+data/
+.coverage
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/

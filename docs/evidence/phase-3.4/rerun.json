@@ -1,0 +1,16 @@
+{
+  "month": "202601",
+  "archive_key": "202601-citibike-tripdata.zip",
+  "archive_size": 353829139,
+  "archive_path": "data/cache/202601-citibike-tripdata.zip",
+  "checksum_sha256": "8d579be9515f797739f0ff907576da44f25413bc677e1286a876696a71ae9755",
+  "csv_members": [
+    "202601-citibike-tripdata_1.csv",
+    "202601-citibike-tripdata_2.csv"
+  ],
+  "rows_read": 1816391,
+  "rows_accepted": 0,
+  "rows_rejected": 0,
+  "duplicates_detected": 1816391,
+  "elapsed_seconds": 673.33
+}
