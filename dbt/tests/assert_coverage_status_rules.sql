@@ -42,6 +42,23 @@ failed_checks as (
     union all
 
     select
+        'uncertain_status_with_demand',
+        hour_utc::text
+    from coverage
+    where coverage_status = 'uncertain'
+        and (in_demand_mart or demand_rides_total is not null)
+
+    union all
+
+    select
+        'uncertain_status_wrong_reason',
+        hour_utc::text
+    from coverage
+    where coverage_status = 'uncertain' and coverage_reason <> 'dst_ambiguous_hour'
+
+    union all
+
+    select
         'partial_status_without_observed_trips',
         hour_utc::text
     from coverage
@@ -90,7 +107,10 @@ failed_checks as (
     from coverage
     where coverage_reason = 'gap_resume'
         and (not in_demand_mart or demand_rides_total is null
-             or hour_utc < '{{ var('coverage_gap_end') }}'::timestamptz
+             or not exists (
+                 select 1 from {{ ref('coverage_gaps') }} g
+                 where hour_utc = date_trunc('hour', g.gap_end)
+             )
              or coverage_status <> 'partial')
 
     union all
@@ -101,8 +121,11 @@ failed_checks as (
     from coverage
     where coverage_reason = 'gap_onset'
         and (in_demand_mart or demand_rides_total is not null
-             or not (hour_utc >= '{{ var('coverage_gap_start') }}'::timestamptz
-                     and hour_utc < '{{ var('coverage_gap_end') }}'::timestamptz)
+             or not exists (
+                 select 1 from {{ ref('coverage_gaps') }} g
+                 where hour_utc >= g.gap_start
+                   and hour_utc < g.gap_end
+             )
              or coverage_status <> 'partial')
 
     union all
@@ -117,10 +140,24 @@ failed_checks as (
 
     select
         'window_row_count',
-        'expected 744, got ' || count(*)::text
+        'expected ' || expected.n::text || ', got ' || coverage.n::text
+    from (select count(*) as n from coverage) coverage
+    cross join (
+        select sum(
+            (extract(epoch from (coverage_end - coverage_start)) / 3600)::int
+        ) as n
+        from {{ ref('coverage_windows') }}
+    ) expected
+    where coverage.n <> expected.n
+
+    union all
+
+    select
+        'in_demand_mart_matches_demand_mart',
+        coverage.hour_utc::text
     from coverage
-    group by ()
-    having count(*) <> 744
+    left join {{ ref('fct_hourly_demand') }} demand using (hour_utc)
+    where coverage.in_demand_mart <> (demand.hour_utc is not null)
 
 )
 

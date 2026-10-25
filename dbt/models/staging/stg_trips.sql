@@ -1,3 +1,12 @@
+{{ config(
+    materialized='table',
+    indexes=[
+        {'columns': ['ride_id'], 'unique': true},
+        {'columns': ['started_at_utc']},
+        {'columns': ['started_at_status']},
+    ],
+) }}
+
 with source as (
 
     select * from {{ source('raw', 'trips') }}

@@ -20,12 +20,16 @@ data/
 src/data/
 *.zip
 *.csv
+!dbt/seeds/*.csv
 *.parquet
 
 # Environment
 .env
 .env.*
 !.env.example
+
+# Generated local config (may embed local database credentials)
+config/forecasting_config.json
 
 # Testing
 .pytest_cache/

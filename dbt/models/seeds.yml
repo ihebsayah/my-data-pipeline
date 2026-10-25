@@ -1,0 +1,62 @@
+version: 2
+
+seeds:
+  - name: coverage_windows
+    description: >
+      Verified source-coverage windows, one row per ingested archive month. Each
+      row declares the local-time half-open interval [coverage_start, coverage_end)
+      that the published archive covers. Offsets are explicit absolutes so DST
+      transitions inside a window (e.g. 2025-11-02) are unambiguous. This seed
+      replaces the previously hardcoded January-only coverage variables; adding a
+      month is a data change, not a code change.
+    config:
+      column_types:
+        month: text
+        coverage_start: timestamptz
+        coverage_end: timestamptz
+        window_label: text
+    columns:
+      - name: month
+        description: Archive month key (YYYYMM) as ingested.
+        tests:
+          - not_null
+          - unique
+      - name: coverage_start
+        description: First covered instant (inclusive), explicit offset.
+        tests:
+          - not_null
+      - name: coverage_end
+        description: First instant after the window (exclusive), explicit offset.
+        tests:
+          - not_null
+      - name: window_label
+        description: Human-readable window label.
+
+  - name: coverage_gaps
+    description: >
+      Verified source-outage windows, hour-aligned, one row per known outage.
+      Only the documented 2026-01-25 January outage is listed. Months with no
+      listed gap are treated as fully observed except for their end-keyed
+      boundary day; unknown missing hours are classified unavailable, never
+      zero-filled. Add a row only with independent evidence, never from low volume.
+    config:
+      column_types:
+        month: text
+        gap_start: timestamptz
+        gap_end: timestamptz
+        gap_label: text
+    columns:
+      - name: month
+        description: Archive month the outage belongs to.
+        tests:
+          - not_null
+      - name: gap_start
+        description: First hour of the outage (inclusive).
+        tests:
+          - not_null
+      - name: gap_end
+        description: First hour after the outage (exclusive).
+        tests:
+          - not_null
+      - name: gap_label
+        description: Human-readable outage label.

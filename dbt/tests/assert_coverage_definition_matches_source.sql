@@ -1,19 +1,9 @@
 with spine as (
 
-    select hour_utc
-    from (
-        select generate_series(
-            '{{ var('coverage_start') }}'::timestamptz,
-            '{{ var('coverage_gap_start') }}'::timestamptz - interval '1 hour',
-            interval '1 hour'
-        ) as hour_utc
-        union all
-        select generate_series(
-            '{{ var('coverage_gap_end') }}'::timestamptz,
-            '{{ var('coverage_end') }}'::timestamptz - interval '1 hour',
-            interval '1 hour'
-        ) as hour_utc
-    ) coverage_hours
+    select hour_utc, in_outage_window
+    from ({{ coverage_spine() }}) spine
+    where not in_outage_window
+      and not is_dst_ambiguous_hour
 
 ),
 
@@ -22,6 +12,8 @@ observed as (
     select distinct date_trunc('hour', started_at_utc at time zone 'UTC') at time zone 'UTC' as hour_utc
     from {{ ref('stg_trips') }}
     where started_at_status = 'valid'
+        and started_at_utc >= (select min(coverage_start) from {{ ref('coverage_windows') }})
+        and started_at_utc < (select max(coverage_end) from {{ ref('coverage_windows') }})
 
 ),
 
@@ -42,8 +34,11 @@ violations as (
     from observed
     left join spine using (hour_utc)
     where spine.hour_utc is null
-        and observed.hour_utc <> '{{ var('coverage_gap_start') }}'::timestamptz
-        and observed.hour_utc >= '{{ var('coverage_start') }}'::timestamptz
+        and not exists (
+            select 1 from {{ ref('coverage_gaps') }} g
+            where observed.hour_utc >= g.gap_start
+              and observed.hour_utc < g.gap_end
+        )
 
 )
 

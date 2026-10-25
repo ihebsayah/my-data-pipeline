@@ -3,8 +3,8 @@ version: 2
 models:
   - name: fct_hourly_coverage
     description: >
-      One row per hour of the full coverage window (744 rows for January 2026),
-      including hours that are absent from fct_hourly_demand. This is the
+      One row per hour of the full coverage window (the union of all verified
+      seed windows), including hours that are absent from fct_hourly_demand. This is the
       availability companion to fct_hourly_demand: observed_trips counts trips
       actually present in the source for that hour (evidence of data), while
       coverage_status states whether the hour's data can be trusted as a
@@ -45,14 +45,14 @@ models:
         tests:
           - not_null
       - name: coverage_status
-        description: Availability classification of the hour (complete / boundary / partial / unavailable).
+        description: Availability classification of the hour (complete / boundary / partial / unavailable / uncertain).
         tests:
           - not_null
           - accepted_values:
               arguments:
-                values: ['complete', 'boundary', 'partial', 'unavailable']
+                values: ['complete', 'boundary', 'partial', 'unavailable', 'uncertain']
       - name: in_demand_mart
-        description: True when a matching row exists in fct_hourly_demand (complete + boundary hours only).
+        description: True when a matching row exists in fct_hourly_demand (complete + boundary + gap_resume hours only).
         tests:
           - not_null
       - name: observed_trips
@@ -63,14 +63,14 @@ models:
       - name: demand_rides_total
         description: >
           rides_total from fct_hourly_demand. NULL for hours not in the demand
-          mart (partial onset / unavailable) so absent coverage is never
-          rendered as zero demand.
+          mart (partial onset / unavailable / uncertain) so absent coverage is
+          never rendered as zero demand.
       - name: is_source_truncated
         description: True for final-day hours whose demand counts are right-truncated by the end-keyed archive.
         tests:
           - not_null
       - name: coverage_reason
-        description: Human-readable driver of non-complete status (end_keyed_archive / source_outage / gap_onset / gap_resume); NULL for complete hours.
+        description: Human-readable driver of non-complete status (end_keyed_archive / source_outage / dst_ambiguous_hour / gap_onset / gap_resume); NULL for complete hours.
       - name: first_trip_started_at
         description: UTC start of the first observed trip in the hour; NULL when the hour has no observed trips.
 
@@ -81,10 +81,10 @@ models:
       complete_hours / partial_hours / unavailable_hours / boundary_hours make
       the day's data availability explicit; is_fully_covered_day is true only
       when all 24 hours are 'complete'. observed_trips counts what the source
-      physically contains for the day (including the 4 gap-onset trips excluded
+      physically contains for the day (including any gap-onset trips excluded
       from demand), rides_* aggregate only hours present in the demand mart,
-      and trips_excluded_from_demand is their difference (nonzero only on
-      2026-01-25 for this dataset).
+      and trips_excluded_from_demand is their difference (nonzero only on the
+      documented January outage boundary).
     columns:
       - name: hour_local_date
         description: Local calendar date; one row per date in the coverage window.
@@ -124,8 +124,18 @@ models:
         tests:
           - not_null
           - nonnegative
+      - name: uncertain_hours
+        description: Hours of this date whose trips cannot be placed in a UTC bucket (DST fall-back repeated local hour); excluded from demand.
+        tests:
+          - not_null
+          - nonnegative
+      - name: expected_hours
+        description: Number of coverage-spine hours for this local date (24 normally, 25 on a DST fall-back day).
+        tests:
+          - not_null
+          - nonnegative
       - name: is_fully_covered_day
-        description: True only when all 24 hours of the date have status 'complete'.
+        description: True only when every spine hour of the date has status 'complete'.
         tests:
           - not_null
       - name: is_source_truncated_day

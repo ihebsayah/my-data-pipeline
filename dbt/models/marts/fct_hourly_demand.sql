@@ -1,19 +1,9 @@
 with spine as (
 
-    select hour_utc
-    from (
-        select generate_series(
-            '{{ var('coverage_start') }}'::timestamptz,
-            '{{ var('coverage_gap_start') }}'::timestamptz - interval '1 hour',
-            interval '1 hour'
-        ) as hour_utc
-        union all
-        select generate_series(
-            '{{ var('coverage_gap_end') }}'::timestamptz,
-            '{{ var('coverage_end') }}'::timestamptz - interval '1 hour',
-            interval '1 hour'
-        ) as hour_utc
-    ) coverage_hours
+    select hour_utc, window_label, coverage_end, in_outage_window, is_dst_ambiguous_hour
+    from ({{ coverage_spine() }}) spine
+    where not in_outage_window
+      and not is_dst_ambiguous_hour
 
 ),
 
@@ -26,11 +16,14 @@ hourly_starts as (
         count(*) filter (where member_casual = 'casual') as rides_casual
     from {{ ref('stg_trips') }}
     where started_at_status = 'valid'
-        and started_at_utc >= '{{ var('coverage_start') }}'::timestamptz
-        and started_at_utc < '{{ var('coverage_end') }}'::timestamptz
-        and not (
-            started_at_utc >= '{{ var('coverage_gap_start') }}'::timestamptz
-            and started_at_utc < '{{ var('coverage_gap_end') }}'::timestamptz
+        and started_at_utc >= (select min(coverage_start) from {{ ref('coverage_windows') }})
+        and started_at_utc < (select max(coverage_end) from {{ ref('coverage_windows') }})
+        and not exists (
+            select 1 from {{ ref('coverage_gaps') }} g
+            where date_trunc('hour', started_at_utc at time zone 'UTC') at time zone 'UTC'
+                    >= g.gap_start
+              and date_trunc('hour', started_at_utc at time zone 'UTC') at time zone 'UTC'
+                    < g.gap_end
         )
     group by 1
 
@@ -46,6 +39,6 @@ select
     coalesce(hourly_starts.rides_total, 0)::int as rides_total,
     coalesce(hourly_starts.rides_member, 0)::int as rides_member,
     coalesce(hourly_starts.rides_casual, 0)::int as rides_casual,
-    spine.hour_utc >= '{{ var('coverage_end') }}'::timestamptz - interval '1 day' as is_source_truncated
+    spine.hour_utc >= spine.coverage_end - interval '1 day' as is_source_truncated
 from spine
 left join hourly_starts using (hour_utc)

@@ -16,6 +16,7 @@ dependencies = [
     "typer>=0.12.3",
     "python-dateutil>=2.9.0",
     "pytz>=2024.1",
+    "scikit-learn>=1.8.0",
     "dbt-core==1.12.6",
     "dbt-postgres==1.11.0",
 ]

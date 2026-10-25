@@ -21,6 +21,8 @@ select
     count(*) filter (where coverage.coverage_status = 'partial')::int as partial_hours,
     count(*) filter (where coverage.coverage_status = 'unavailable')::int as unavailable_hours,
     count(*) filter (where coverage.coverage_status = 'boundary')::int as boundary_hours,
+    count(*) filter (where coverage.coverage_status = 'uncertain')::int as uncertain_hours,
+    count(*)::int as expected_hours,
     bool_and(coverage.coverage_status = 'complete') as is_fully_covered_day,
     bool_or(coverage.is_source_truncated) as is_source_truncated_day,
     sum(coverage.observed_trips)::int as observed_trips,

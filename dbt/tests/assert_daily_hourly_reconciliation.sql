@@ -65,8 +65,9 @@ failed_checks as (
         'coverage_annotation_counts',
         hour_local_date::text
     from daily
-    where complete_hours + partial_hours + unavailable_hours + boundary_hours <> 24
-        or is_fully_covered_day <> (complete_hours = 24)
+    where complete_hours + partial_hours + unavailable_hours + boundary_hours
+            + uncertain_hours <> daily.expected_hours
+        or is_fully_covered_day <> (complete_hours = daily.expected_hours)
         or is_source_truncated_day <> (boundary_hours > 0)
         or trips_excluded_from_demand <> observed_trips - rides_total
         or observed_trips < rides_total

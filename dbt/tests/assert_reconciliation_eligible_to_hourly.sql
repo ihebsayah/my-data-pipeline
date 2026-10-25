@@ -7,19 +7,9 @@ with staged as (
 spine as (
 
     select hour_utc
-    from (
-        select generate_series(
-            '{{ var('coverage_start') }}'::timestamptz,
-            '{{ var('coverage_gap_start') }}'::timestamptz - interval '1 hour',
-            interval '1 hour'
-        ) as hour_utc
-        union all
-        select generate_series(
-            '{{ var('coverage_gap_end') }}'::timestamptz,
-            '{{ var('coverage_end') }}'::timestamptz - interval '1 hour',
-            interval '1 hour'
-        ) as hour_utc
-    ) coverage_hours
+    from ({{ coverage_spine() }}) spine
+    where not in_outage_window
+      and not is_dst_ambiguous_hour
 
 ),
 
@@ -32,16 +22,19 @@ counts as (
         count(*) filter (where started_at_status = 'valid') as valid_starts,
         count(*) filter (
             where started_at_status = 'valid'
-            and started_at_utc < '{{ var('coverage_start') }}'::timestamptz
+            and started_at_utc < (select min(coverage_start) from {{ ref('coverage_windows') }})
         ) as boundary_before_window,
         count(*) filter (
             where started_at_status = 'valid'
-            and started_at_utc >= '{{ var('coverage_end') }}'::timestamptz
+            and started_at_utc >= (select max(coverage_end) from {{ ref('coverage_windows') }})
         ) as boundary_after_window,
         count(*) filter (
             where started_at_status = 'valid'
-            and started_at_utc >= '{{ var('coverage_gap_start') }}'::timestamptz
-            and started_at_utc < '{{ var('coverage_gap_end') }}'::timestamptz
+            and exists (
+                select 1 from {{ ref('coverage_gaps') }} g
+                where started_at_utc >= g.gap_start
+                  and started_at_utc < g.gap_end
+            )
         ) as starts_in_outage_window
     from staged
 
@@ -56,11 +49,12 @@ recomputed as (
         count(*) filter (where member_casual = 'casual') as rides_casual
     from staged
     where started_at_status = 'valid'
-        and started_at_utc >= '{{ var('coverage_start') }}'::timestamptz
-        and started_at_utc < '{{ var('coverage_end') }}'::timestamptz
-        and not (
-            started_at_utc >= '{{ var('coverage_gap_start') }}'::timestamptz
-            and started_at_utc < '{{ var('coverage_gap_end') }}'::timestamptz
+        and started_at_utc >= (select min(coverage_start) from {{ ref('coverage_windows') }})
+        and started_at_utc < (select max(coverage_end) from {{ ref('coverage_windows') }})
+        and not exists (
+            select 1 from {{ ref('coverage_gaps') }} g
+            where started_at_utc >= g.gap_start
+              and started_at_utc < g.gap_end
         )
     group by 1
 

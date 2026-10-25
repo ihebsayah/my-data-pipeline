@@ -4,19 +4,20 @@ models:
   - name: fct_hourly_demand
     description: >
       Hourly system-wide Citi Bike trip-start demand. Grain: exactly one row
-      per UTC hour (hour_utc) over the verified source-coverage window
-      (January 2026 local, minus the documented 2026-01-25 source outage
-      window). Hours inside the outage window are deliberately absent rather
-      than zero-filled, because coverage there is not verified. Calendar
-      attributes (local date, hour, weekday, weekend) are derived from the
-      America/New_York rendering of hour_utc; because New York DST offsets
-      are whole hours, this is a strict 1:1 mapping with UTC hours, including
-      across DST transitions. Trip starts whose timestamps are ambiguous,
-      nonexistent or invalid are excluded from aggregation and accounted for
-      in the reconciliation tests. is_source_truncated marks the final local
-      day of the window: the published archive selects trips by end time, so
-      trips starting late on 2026-01-31 that end on 2026-02-01 are absent
-      from the source and those hours undercount.
+      per UTC hour (hour_utc) over the union of verified source-coverage
+      windows (seeds/coverage_windows.csv), minus any documented outage
+      windows (seeds/coverage_gaps.csv; the January 2026 window carries the
+      verified 2026-01-25 outage). Hours inside an outage window are
+      deliberately absent rather than zero-filled, because coverage there is
+      not verified. Calendar attributes (local date, hour, weekday, weekend)
+      are derived from the America/New_York rendering of hour_utc; because New
+      York DST offsets are whole hours, this is a strict 1:1 mapping with UTC
+      hours, including across DST transitions. Trip starts whose timestamps
+      are ambiguous, nonexistent or invalid are excluded from aggregation and
+      accounted for in the reconciliation tests. is_source_truncated marks the
+      final local day of each window: the published archives select trips by
+      end time, so trips starting late on the final day that end after the
+      window are absent from the source and those hours undercount.
     columns:
       - name: hour_utc
         description: Canonical hour key; UTC instant at the start of the hour. One row per value.

@@ -12,11 +12,12 @@ eligible as (
         member_casual
     from {{ ref('stg_trips') }}
     where started_at_status = 'valid'
-        and started_at_utc >= '{{ var('coverage_start') }}'::timestamptz
-        and started_at_utc < '{{ var('coverage_end') }}'::timestamptz
-        and not (
-            started_at_utc >= '{{ var('coverage_gap_start') }}'::timestamptz
-            and started_at_utc < '{{ var('coverage_gap_end') }}'::timestamptz
+        and started_at_utc >= (select min(coverage_start) from {{ ref('coverage_windows') }})
+        and started_at_utc < (select max(coverage_end) from {{ ref('coverage_windows') }})
+        and not exists (
+            select 1 from {{ ref('coverage_gaps') }} g
+            where started_at_utc >= g.gap_start
+              and started_at_utc < g.gap_end
         )
 
 ),

@@ -21,27 +21,16 @@ models:
       +schema: marts
       +materialized: table
 
+seeds:
+  urban_mobility:
+    +schema: staging
+    +quote_columns: false
+
 vars:
   # Local timezone of the Citi Bike service area. Source timestamps are naive
   # local (America/New_York) wall times; all DST classification uses this zone.
   local_tz: America/New_York
 
-  # Verified source-coverage window for the hourly-demand calendar.
-  # Values are absolute instants (explicit -05:00 = EST, valid for the whole
-  # January 2026 window; no DST transition inside it).
-  #
-  # coverage_start: first covered hour = 2026-01-01 00:00 local.
-  # coverage_end:   first hour after the window = 2026-02-01 00:00 local.
-  # The published archive selects trips by *end* time within January, so
-  # December-start boundary trips exist and the final local day is
-  # right-truncated; both are handled explicitly in the models/tests.
-  #
-  # coverage_gap_*: source outage observed on 2026-01-25. Last trip before the
-  # gap started 12:03:29 local; first trip after started 2026-01-26 07:03:17.
-  # The gap is conservatively hour-aligned to [2026-01-25 12:00, 2026-01-26
-  # 07:00) local (19 hours), which also excludes the partially covered onset
-  # hour (4 trips). Hours inside the gap are NOT zero-filled.
-  coverage_start: "2026-01-01 00:00:00-05:00"
-  coverage_end: "2026-02-01 00:00:00-05:00"
-  coverage_gap_start: "2026-01-25 12:00:00-05:00"
-  coverage_gap_end: "2026-01-26 07:00:00-05:00"
+  # The verified source-coverage windows (and any known outages) are now
+  # data-driven seeds, not vars: see seeds/coverage_windows.csv and
+  # seeds/coverage_gaps.csv. Add a month by adding a seed row.
