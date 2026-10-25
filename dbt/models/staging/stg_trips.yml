@@ -12,11 +12,13 @@ models:
       times are never assigned an invented UTC instant. Station IDs stay
       text; blank station values become NULL without dropping the trip.
       trip_duration_sec is the real elapsed time in seconds, computed only
-      when both timestamps resolve to UTC. Materialized as a table with
-      indexes on ride_id, started_at_utc and started_at_status: the raw table
-      now holds multiple monthly archives (~12M rows) and re-parsing every
-      timestamp on each downstream query was impractical (Phase 4C). A future
-      incremental materialization is the natural extension.
+      when both timestamps resolve to UTC. Incrementally materialized by
+      ride_id with indexes on ride_id, started_at_utc and started_at_status:
+      the raw table now holds many monthly archives and re-parsing every
+      timestamp on each build was impractical (Phase 4C). Only ride_ids not
+      already staged are parsed; delete+insert keeps reruns idempotent. A
+      full refresh is required whenever timestamp/classification semantics
+      change.
     columns:
       - name: ride_id
         description: Canonical trip identifier (text, source primary key).

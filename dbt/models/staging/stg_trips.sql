@@ -1,5 +1,8 @@
 {{ config(
-    materialized='table',
+    materialized='incremental',
+    unique_key='ride_id',
+    incremental_strategy='delete+insert',
+    on_schema_change='fail',
     indexes=[
         {'columns': ['ride_id'], 'unique': true},
         {'columns': ['started_at_utc']},
@@ -9,7 +12,15 @@
 
 with source as (
 
-    select * from {{ source('raw', 'trips') }}
+    select *
+    from {{ source('raw', 'trips') }} as source
+    {% if is_incremental() %}
+    where not exists (
+        select 1
+        from {{ this }} as existing
+        where existing.ride_id = source.ride_id
+    )
+    {% endif %}
 
 ),
 

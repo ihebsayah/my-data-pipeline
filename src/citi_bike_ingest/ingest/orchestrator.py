@@ -63,6 +63,8 @@ class IngestionOrchestrator:
     def ingest_archive(
         self, archive_path: Path, file_key: str, month: str,
         expected_rows: int | None = None,
+        *,
+        use_bulk: bool = False,
     ) -> dict:
         """Process a cached archive to EOF with durable batch accounting."""
         start_time = time.time()
@@ -88,8 +90,9 @@ class IngestionOrchestrator:
             manifest_id = loader.create_manifest(
                 file_key, month, checksum, archive_size, str(archive_path)
             )
+            batch_method = loader.bulk_load_batch if use_bulk else loader.load_batch
             for batch in parser.iterate_rows(self.settings.batch_size):
-                stats: LoadStats = loader.load_batch(batch, file_key, manifest_id=manifest_id)
+                stats: LoadStats = batch_method(batch, file_key, manifest_id=manifest_id)
                 total_read += len(batch)
                 total_accepted += stats.rows_inserted
                 total_rejected += stats.rows_rejected

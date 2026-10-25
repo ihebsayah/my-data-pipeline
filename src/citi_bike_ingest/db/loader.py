@@ -222,6 +222,104 @@ class DatabaseLoader:
                     raise ValueError("Missing running manifest")
         return stats
 
+    def bulk_load_batch(
+        self,
+        batch_rows: List[tuple[Dict[str, str], str]],
+        file_key: str,
+        *,
+        manifest_id: int | None = None,
+    ) -> LoadStats:
+        if not self._conn:
+            raise RuntimeError("Not connected")
+        stats = LoadStats()
+        accepted: list[tuple[Dict[str, str], str]] = []
+        rejected: list[tuple[Dict[str, str], str]] = []
+        for row_data, member in batch_rows:
+            if row_data.get("_rejected") == "true":
+                rejected.append((row_data, member))
+            else:
+                accepted.append((row_data, member))
+
+        with self._conn.transaction():
+            for row_data, member in rejected:
+                self._insert_reject(row_data, row_data.get("_reason", "unknown"), member, file_key)
+                stats.rows_rejected += 1
+
+            if accepted:
+                columns = [
+                    "ride_id", "rideable_type", "started_at_raw", "ended_at_raw",
+                    "start_station_name", "start_station_id", "end_station_name",
+                    "end_station_id", "start_lat", "start_lng", "end_lat", "end_lng",
+                    "member_casual", "source_member", "source_file_key",
+                ]
+                rows = []
+                for row_data, member in accepted:
+                    rows.append([
+                        row_data.get("ride_id", ""),
+                        row_data.get("rideable_type", ""),
+                        row_data.get("started_at", ""),
+                        row_data.get("ended_at", ""),
+                        row_data.get("start_station_name", ""),
+                        row_data.get("start_station_id", ""),
+                        row_data.get("end_station_name", ""),
+                        row_data.get("end_station_id", ""),
+                        self._to_num(row_data.get("start_lat", "")),
+                        self._to_num(row_data.get("start_lng", "")),
+                        self._to_num(row_data.get("end_lat", "")),
+                        self._to_num(row_data.get("end_lng", "")),
+                        row_data.get("member_casual", ""),
+                        member,
+                        file_key,
+                    ])
+                with self._conn.cursor() as cur:
+                    cur.execute("DROP TABLE IF EXISTS _bulk_ingest_buffer")
+                    cur.execute(
+                        "CREATE TEMP TABLE _bulk_ingest_buffer "
+                        "(LIKE raw.trips INCLUDING DEFAULTS) ON COMMIT DROP"
+                    )
+                    with cur.copy(
+                        f"COPY _bulk_ingest_buffer ({', '.join(columns)}) FROM STDIN"
+                    ) as copy:
+                        for row in rows:
+                            copy.write_row(row)
+                    cur.execute(
+                        """INSERT INTO raw.trips (
+                            ride_id, rideable_type, started_at_raw, ended_at_raw,
+                            start_station_name, start_station_id, end_station_name,
+                            end_station_id, start_lat, start_lng, end_lat, end_lng,
+                            member_casual, source_member, source_file_key
+                          )
+                          SELECT
+                            ride_id, rideable_type, started_at_raw, ended_at_raw,
+                            start_station_name, start_station_id, end_station_name,
+                            end_station_id, start_lat, start_lng, end_lat, end_lng,
+                            member_casual, source_member, source_file_key
+                          FROM _bulk_ingest_buffer
+                          ON CONFLICT (ride_id) DO NOTHING
+                          RETURNING 1"""
+                    )
+                    stats.rows_inserted = cur.rowcount if cur.rowcount is not None else 0
+                    stats.duplicates_skipped = len(accepted) - stats.rows_inserted
+
+            if len(accepted) + len(rejected) != (
+                stats.rows_inserted
+                + stats.rows_rejected
+                + stats.duplicates_skipped
+            ):
+                raise ValueError("Batch accounting invariant failed")
+            if manifest_id is not None:
+                cur = self._conn.execute(
+                    """UPDATE ingest.manifest SET rows_read=rows_read+%s,
+                    rows_accepted=rows_accepted+%s, rows_rejected=rows_rejected+%s,
+                    duplicates_detected=duplicates_detected+%s
+                    WHERE id=%s AND status='running'""",
+                    (len(accepted) + len(rejected), stats.rows_inserted,
+                     stats.rows_rejected, stats.duplicates_skipped, manifest_id),
+                )
+                if cur.rowcount != 1:
+                    raise ValueError("Missing running manifest")
+        return stats
+
     def persistence_counts(self) -> tuple[int, int]:
         if not self._conn:
             raise RuntimeError("Not connected")
