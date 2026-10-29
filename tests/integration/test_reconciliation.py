@@ -92,6 +92,45 @@ def test_conflict_uses_actual_affected_rows(loader):
     assert loader.persistence_counts() == (1, 0)
 
 
+def test_bulk_load_accounts_for_conflicts_rejects_and_rerun(loader):
+    mid = manifest(loader)
+    rejected = {"_rejected": "true", "_reason": "bad", "ride_id": "x"}
+    batch = [(row("a"), "a.csv"), (row("a"), "b.csv"), (rejected, "c.csv")]
+    stats = loader.bulk_load_batch(batch, "test.zip", manifest_id=mid)
+    assert (
+        stats.rows_inserted,
+        stats.rows_rejected,
+        stats.duplicates_skipped,
+    ) == (1, 1, 1)
+    assert loader.persistence_counts() == (1, 1)
+    assert loader._conn.execute(
+        "SELECT rows_read, rows_accepted, rows_rejected, duplicates_detected "
+        "FROM ingest.manifest WHERE id=%s", (mid,)
+    ).fetchone() == (3, 1, 1, 1)
+
+    rerun = loader.bulk_load_batch(batch, "test.zip", manifest_id=mid)
+    assert (
+        rerun.rows_inserted,
+        rerun.rows_rejected,
+        rerun.duplicates_skipped,
+    ) == (0, 1, 2)
+    assert loader.persistence_counts() == (1, 2)
+
+
+def test_bulk_load_rolls_back_data_and_checkpoint_on_database_error(loader):
+    mid = manifest(loader)
+    loader._conn.execute("ALTER TABLE raw.trips ADD CHECK (ride_id <> 'b')")
+    with pytest.raises(psycopg.errors.CheckViolation):
+        loader.bulk_load_batch(
+            [(row("a"), "a.csv"), (row("b"), "b.csv")], "test.zip", manifest_id=mid
+        )
+    assert loader.persistence_counts() == (0, 0)
+    assert loader._conn.execute(
+        "SELECT rows_read FROM ingest.manifest WHERE id=%s", (mid,)
+    ).fetchone() == (0,)
+
+
+
 @pytest.mark.parametrize("error", [RuntimeError("write failed"), KeyboardInterrupt()])
 def test_partial_batch_rolls_back_with_checkpoint(loader, monkeypatch, error):
     mid = manifest(loader)

@@ -278,9 +278,11 @@ def main() -> int:
     }
     if REPORT_PATH.exists():
         previous = json.loads(REPORT_PATH.read_text())
-        if previous.get("months") == months:
-            report = previous
-            report["started_at_utc"] = datetime.now(timezone.utc).isoformat()
+        report = previous
+        report["months"] = sorted(set(previous.get("months", [])) | set(months))
+        report.setdefault("resumed_at_utc", []).append(
+            datetime.now(timezone.utc).isoformat()
+        )
 
     with psycopg.connect(settings.database_url) as conn:
         for month in months:

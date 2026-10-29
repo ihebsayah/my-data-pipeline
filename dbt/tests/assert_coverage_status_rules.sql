@@ -54,7 +54,20 @@ failed_checks as (
         'uncertain_status_wrong_reason',
         hour_utc::text
     from coverage
-    where coverage_status = 'uncertain' and coverage_reason <> 'dst_ambiguous_hour'
+    where coverage_status = 'uncertain'
+        and (coverage_reason is null or coverage_reason not in (
+            'dst_ambiguous_hour', 'unexplained_source_gap'
+        ))
+
+    union all
+
+    select
+        'unexplained_gap_has_observations_or_demand',
+        hour_utc::text
+    from coverage
+    where coverage_reason = 'unexplained_source_gap'
+        and (coverage_status <> 'uncertain' or observed_trips <> 0
+             or in_demand_mart or demand_rides_total is not null)
 
     union all
 

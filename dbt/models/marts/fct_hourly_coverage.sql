@@ -57,10 +57,11 @@ classified as (
     select
         *,
         case
-            when in_boundary_day then 'boundary'
             when in_outage_window and observed_trips > 0 then 'partial'
             when in_outage_window then 'unavailable'
             when is_dst_ambiguous_hour then 'uncertain'
+            when observed_trips = 0 then 'uncertain'
+            when in_boundary_day then 'boundary'
             when is_resume_hour and (
                 first_trip_started_at is null
                 or first_trip_started_at > resume_boundary
@@ -86,7 +87,8 @@ select
     case
         when coverage_status = 'boundary' then 'end_keyed_archive'
         when coverage_status = 'unavailable' then 'source_outage'
-        when coverage_status = 'uncertain' then 'dst_ambiguous_hour'
+        when coverage_status = 'uncertain' and is_dst_ambiguous_hour then 'dst_ambiguous_hour'
+        when coverage_status = 'uncertain' then 'unexplained_source_gap'
         when coverage_status = 'partial' and in_outage_window then 'gap_onset'
         when coverage_status = 'partial' then 'gap_resume'
     end as coverage_reason,

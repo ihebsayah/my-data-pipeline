@@ -41,4 +41,4 @@ select
     coalesce(hourly_starts.rides_casual, 0)::int as rides_casual,
     spine.hour_utc >= spine.coverage_end - interval '1 day' as is_source_truncated
 from spine
-left join hourly_starts using (hour_utc)
+join hourly_starts using (hour_utc)

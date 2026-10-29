@@ -24,7 +24,12 @@ violations as (
         'covered_hour_without_observed_trips' as violation
     from spine
     left join observed using (hour_utc)
+    left join {{ ref('fct_hourly_coverage') }} coverage using (hour_utc)
     where observed.hour_utc is null
+        and (coverage.coverage_status is distinct from 'uncertain'
+             or coverage.coverage_reason is distinct from 'unexplained_source_gap'
+             or coverage.in_demand_mart
+             or coverage.demand_rides_total is not null)
 
     union all
 

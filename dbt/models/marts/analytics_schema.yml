@@ -70,7 +70,7 @@ models:
         tests:
           - not_null
       - name: coverage_reason
-        description: Human-readable driver of non-complete status (end_keyed_archive / source_outage / dst_ambiguous_hour / gap_onset / gap_resume); NULL for complete hours.
+        description: Human-readable driver of non-complete status (end_keyed_archive / source_outage / dst_ambiguous_hour / unexplained_source_gap / gap_onset / gap_resume); NULL for complete hours. Unexplained missing source hours remain uncertain with NULL demand.
       - name: first_trip_started_at
         description: UTC start of the first observed trip in the hour; NULL when the hour has no observed trips.
 

@@ -10,6 +10,11 @@ spine as (
     from ({{ coverage_spine() }}) spine
     where not in_outage_window
       and not is_dst_ambiguous_hour
+      and exists (
+          select 1 from {{ ref('fct_hourly_coverage') }} coverage
+          where coverage.hour_utc = spine.hour_utc
+            and coverage.in_demand_mart
+      )
 
 ),
 
